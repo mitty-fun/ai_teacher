@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="container py-5">
+  
+  <nav aria-label="Page navigation example">
+    <ul class="pagination">
+      {% for i in challenges %}
+        <li class="page-item {{ 'active' if loop.index == id else '' }}">
+          <a class="page-link" href="{{ url_for('python', id=loop.index) }}">{{ loop.index }}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </nav>
+
+  <div class="row">
+    <div class="col-6">
+      <div class="mb-3">
+        <pre class="alert alert-primary">{{ data.description }}</pre>
+      </div>
+      <div class="mb-3">
+        <label for="inputs" class="form-label">inputs 輸入：</label>
+        <textarea id="inputs" class="form-control" rows="4">{{ data.inputs }}</textarea>
+      </div>
+      <div class="mb-3">
+        <label for="outputs" class="form-label">outputs 輸出：</label>
+        <textarea id="outputs" class="form-control" rows="4">{{ data.outputs }}</textarea>
+      </div>
+    </div>
+    <div class="col-6">
+      <div class="mb-3">
+        <div id="container" style="height:200px;border:1px solid black;"></div>
+      </div>
+      <div class="mb-3">
+        <button class="btn btn-danger" onclick="run();">執行</button>
+      </div>
+      <div class="mb-3">
+        <p>錯誤訊息：</p>
+        <pre id="error" class="alert alert-danger"></pre>
+      </div>
+      <div class="mb-3">
+        <p>輸出結果：</p>
+        <pre id="console" class="bg-dark p-3 text-white rounded"></pre>
+      </div>
+      <div class="mb-3">
+        <p>是否過關：</p>
+        <p id="result" class="alert alert-success"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<iframe class="d-none" name="sandbox" src="" frameborder="0" width="100%" height="200"></iframe>
+
+<script>
+  function run () {
+    const form = document.createElement('form')
+    const script = document.createElement('textarea')
+    const inputs = document.createElement('textarea')
+    const outputs = document.createElement('textarea')
+    
+    script.value = window.editor.getValue()
+    script.name = 'script'
+
+    inputs.value = document.querySelector('#inputs').value
+    inputs.name = 'inputs'
+    
+    outputs.value = document.querySelector('#outputs').value
+    outputs.name = 'outputs'
+
+    form.appendChild(script)
+    form.appendChild(inputs)
+    form.appendChild(outputs)
+
+    form.method = 'POST'
+    form.action = '/judger'
+    form.target = 'sandbox'
+    form.appendChild(script)
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+  }
+</script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.25.0/min/vs/loader.min.js"></script>
+<script>
+  require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.20.0/min/vs' } })
+  require(["vs/editor/editor.main"], function () {
+    window.editor = monaco.editor.create(document.getElementById('container'), {
+      value: `{{ data.code|safe }}`,
+      language: 'python',
+      theme: 'vs-dark'
+    })
+  })
+
+  window.addEventListener('message', (event) => {
+    if (event.origin === location.origin) {
+      
+      const { type, text } = event.data
+      
+      if (type === 'console') {
+        document.querySelector('#console').textContent = text
+      }
+      if (type === 'error') {
+        document.querySelector('#error').textContent = `AI 老師：\n${text}`
+      }
+      if (type === 'result') {
+        const el = document.querySelector('#result')
+        const isPass = Boolean(text)
+        el.textContent = isPass ? '過關！' : '未通過！'
+        el.classList.remove('alert-danger', 'alert-success')
+        el.classList.add(isPass ? 'alert-success' : 'alert-danger')
+      }
+    }
+  })
+</script>
+
+{% endblock %}
